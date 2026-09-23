@@ -267,6 +267,7 @@ export interface StorageResp {
   accessKey: string
   secretKey: string
   endpoint: string
+  region: string
   bucketName: string
   domain: string
   recycleBinEnabled: boolean

@@ -254,7 +254,7 @@ const onUpdate = (record: StorageResp) => {
   }
 
   .content-large {
-    height: 110px;
+    height: 130px;
   }
 
   .extra {

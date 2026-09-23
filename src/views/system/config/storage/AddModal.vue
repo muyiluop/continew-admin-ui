@@ -98,6 +98,17 @@ const columns: ColumnItem[] = reactive([
     show: () => form.type === 2,
   },
   {
+    label: 'Region',
+    field: 'region',
+    type: 'input',
+    span: 24,
+    required: false,
+    show: () => form.type === 2,
+    props: {
+      placeholder: '留空默认 us-east-1',
+    },
+  },
+  {
     label: 'Bucket',
     field: 'bucketName',
     type: 'input',

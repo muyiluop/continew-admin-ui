@@ -49,6 +49,7 @@
                   {{ item.endpoint }}
                 </a-typography-paragraph>
               </a-descriptions-item>
+              <a-descriptions-item label="Region">{{ item.region || 'us-east-1' }}</a-descriptions-item>
               <a-descriptions-item label="Bucket">{{ item.bucketName }}</a-descriptions-item>
               <a-descriptions-item label="自定义域名">
                 <a-typography-paragraph
