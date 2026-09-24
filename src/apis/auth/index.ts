@@ -5,10 +5,10 @@ export type * from './type'
 
 const BASE_URL = '/auth'
 
-const login = (req: T.AccountLoginReq | T.PhoneLoginReq | T.EmailLoginReq, tenantCode?: string) => {
+const login = (req: T.AccountLoginReq | T.PhoneLoginReq | T.EmailLoginReq, tenantId?: string) => {
   const headers = {}
-  if (tenantCode) {
-    headers['X-Tenant-Code'] = tenantCode
+  if (tenantId) {
+    headers['X-Tenant-Id'] = tenantId
   }
   return http.post<T.LoginResp>(`${BASE_URL}/login`, req, {
     headers,
@@ -16,18 +16,18 @@ const login = (req: T.AccountLoginReq | T.PhoneLoginReq | T.EmailLoginReq, tenan
 }
 
 /** @desc 账号登录 */
-export function accountLogin(req: T.AccountLoginReq, tenantCode?: string) {
-  return login(req, tenantCode)
+export function accountLogin(req: T.AccountLoginReq, tenantId?: string) {
+  return login(req, tenantId)
 }
 
 /** @desc 邮箱登录 */
-export function emailLogin(req: T.EmailLoginReq, tenantCode?: string) {
-  return login(req, tenantCode)
+export function emailLogin(req: T.EmailLoginReq, tenantId?: string) {
+  return login(req, tenantId)
 }
 
 /** @desc 手机号登录 */
-export function phoneLogin(req: T.PhoneLoginReq, tenantCode?: string) {
-  return login(req, tenantCode)
+export function phoneLogin(req: T.PhoneLoginReq, tenantId?: string) {
+  return login(req, tenantId)
 }
 
 /** @desc 三方账号登录 */

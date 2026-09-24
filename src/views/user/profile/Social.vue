@@ -1,6 +1,6 @@
 <template>
   <a-card title="第三方账号" bordered class="gradient-card">
-    <div v-for="item in modeList" :key="item.title">
+    <div v-for="item in modeList" :key="item.type">
       <div class="item">
         <GiSvgIcon :name="item.icon" :size="38" />
         <div class="info">
@@ -47,41 +47,25 @@
 import { Message } from '@arco-design/web-vue'
 import type { ModeItem } from '../type'
 import VerifyModel from '../components/VerifyModel.vue'
-import { listUserSocial, socialAuth, unbindSocialAccount } from '@/apis'
+import { listSocialPlatform, listUserSocial, socialAuth, unbindSocialAccount } from '@/apis'
+import { getSocialIcon } from '@/constant/social'
 
-const socialList = ref<any>([])
 const modeList = ref<ModeItem[]>([])
 
 // 初始化数据
-const initData = () => {
-  listUserSocial().then((res) => {
-    socialList.value = res.data.map((el) => el.source)
-    modeList.value = [
-      {
-        title: '绑定 Gitee',
-        icon: 'gitee',
-        subtitle: `${socialList.value.includes('GITEE') ? '' : '绑定后，'}可通过 Gitee 进行登录`,
-        jumpMode: 'link',
-        type: 'gitee',
-        status: socialList.value.includes('GITEE'),
-      },
-      {
-        title: '绑定 GitHub',
-        icon: 'github',
-        subtitle: `${socialList.value.includes('GITHUB') ? '' : '绑定后，'}可通过 GitHub 进行登录`,
-        type: 'github',
-        jumpMode: 'link',
-        status: socialList.value.includes('GITHUB'),
-      },
-      {
-        title: '绑定微信',
-        icon: 'wechat',
-        subtitle: `${socialList.value.includes('WECHAT_OPEN') ? '' : '绑定后，'}可通过微信进行登录`,
-        type: 'wechat_open',
-        jumpMode: 'link',
-        status: socialList.value.includes('WECHAT_OPEN'),
-      },
-    ]
+const initData = async () => {
+  const [{ data: boundList }, { data: platformList }] = await Promise.all([listUserSocial(), listSocialPlatform()])
+  const boundSourceSet = new Set((boundList ?? []).map((item) => item.source?.toUpperCase()))
+  modeList.value = (platformList ?? []).map((item) => {
+    const bound = boundSourceSet.has(item.source?.toUpperCase())
+    return {
+      title: `绑定 ${item.name}`,
+      icon: getSocialIcon(item.source),
+      subtitle: `${bound ? '' : '绑定后，'}可通过 ${item.name} 进行登录`,
+      jumpMode: 'link',
+      type: item.source,
+      status: bound,
+    }
   })
 }
 

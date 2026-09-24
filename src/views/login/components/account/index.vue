@@ -8,8 +8,10 @@
     size="large"
     @submit="handleLogin"
   >
-    <a-form-item v-if="tenantStore.needInputTenantCode" field="tenantCode" hide-label>
-      <a-input v-model="tenantCode" placeholder="请输入租户编码（不输入时为默认租户）" allow-clear />
+    <a-form-item v-if="tenantStore.needSelectTenant" field="tenantId" hide-label>
+      <a-select v-model="tenantId" placeholder="请选择租户（不选择时为默认租户）" allow-search allow-clear>
+        <a-option v-for="item in tenantStore.availableTenants" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+      </a-select>
     </a-form-item>
     <a-form-item field="username" hide-label>
       <a-input v-model="form.username" placeholder="请输入用户名" allow-clear />
@@ -58,7 +60,6 @@ const loginConfig = useStorage('login-config', {
 const isCaptchaEnabled = ref(true)
 // 验证码图片
 const captchaImgBase64 = ref()
-const tenantCode = ref()
 const formRef = ref<FormInstance>()
 const form = reactive({
   username: loginConfig.value.username,
@@ -113,6 +114,12 @@ const userStore = useUserStore()
 const tabsStore = useTabsStore()
 const router = useRouter()
 const loading = ref(false)
+
+// 记住上次选择的租户，默认选中
+const tenantId = computed({
+  get: () => tenantStore.selectedTenantId,
+  set: (val) => tenantStore.setSelectedTenantId(val),
+})
 // 登录
 const handleLogin = async () => {
   try {
@@ -125,7 +132,7 @@ const handleLogin = async () => {
       password: encryptByRsa(form.password) || '',
       captcha: form.captcha,
       uuid: form.uuid,
-    }, tenantCode.value)
+    }, tenantId.value)
     tabsStore.reset()
     const { redirect, ...othersQuery } = router.currentRoute.value.query
     const { rememberMe } = loginConfig.value

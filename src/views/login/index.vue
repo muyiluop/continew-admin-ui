@@ -24,19 +24,19 @@
               <component :is="PhoneLogin" v-if="activeTab === '2'" />
             </a-tab-pane>
           </a-tabs>
-          <div class="login-right__oauth">
+          <div v-if="socialPlatforms.length" class="login-right__oauth">
             <a-divider orientation="center">其他登录方式</a-divider>
             <div class="list">
               <div v-if="isEmailLogin" class="mode item" @click="toggleLoginMode"><icon-user /> 账号/手机号登录</div>
               <div v-else class="mode item" @click="toggleLoginMode"><icon-email /> 邮箱登录</div>
-              <a class="item" title="使用 Gitee 账号登录" @click="onOauth('gitee')">
-                <GiSvgIcon name="gitee" :size="24" />
-              </a>
-              <a class="item" title="使用 GitHub 账号登录" @click="onOauth('github')">
-                <GiSvgIcon name="github" :size="24" />
-              </a>
-              <a class="item" title="使用微信账号登录" @click="onOauth('wechat_open')">
-                <GiSvgIcon name="wechat" :size="24" />
+              <a
+                v-for="item in socialPlatforms"
+                :key="item.source"
+                class="item"
+                :title="`使用 ${item.name} 账号登录`"
+                @click="onOauth(item.source)"
+              >
+                <GiSvgIcon :name="getSocialIcon(item.source)" :size="24" />
               </a>
             </div>
           </div>
@@ -76,19 +76,19 @@
         </div>
       </a-col>
     </a-row>
-    <div class="login-right__oauth">
+    <div v-if="socialPlatforms.length" class="login-right__oauth">
       <a-divider orientation="center">其他登录方式</a-divider>
       <div class="list">
         <div v-if="isEmailLogin" class="mode item" @click="toggleLoginMode"><icon-user /> 账号/手机号登录</div>
         <div v-else class="mode item" @click="toggleLoginMode"><icon-email /> 邮箱登录</div>
-        <a class="item" title="使用 Gitee 账号登录" @click="onOauth('gitee')">
-          <GiSvgIcon name="gitee" :size="24" />
-        </a>
-        <a class="item" title="使用 GitHub 账号登录" @click="onOauth('github')">
-          <GiSvgIcon name="github" :size="24" />
-        </a>
-        <a class="item" title="使用微信账号登录" @click="onOauth('wechat_open')">
-          <GiSvgIcon name="wechat" :size="24" />
+        <a
+          v-for="item in socialPlatforms"
+          :key="item.source"
+          class="item"
+          :title="`使用 ${item.name} 账号登录`"
+          @click="onOauth(item.source)"
+        >
+          <GiSvgIcon :name="getSocialIcon(item.source)" :size="24" />
         </a>
       </div>
     </div>
@@ -102,10 +102,12 @@ import AccountLogin from './components/account/index.vue'
 import PhoneLogin from './components/phone/index.vue'
 import EmailLogin from './components/email/index.vue'
 import { socialAuth } from '@/apis/auth'
+import { type SocialPlatformResp, listSocialPlatform } from '@/apis/social'
 import { useAppStore } from '@/stores'
 import { useTenantStore } from '@/stores/modules/tenant'
+import { getSocialIcon } from '@/constant/social'
 import { useDevice } from '@/hooks'
-import { getTenantIdByDomain, getTenantStatus } from '@/apis'
+import { getTenantIdByDomain, getTenantInfo } from '@/apis'
 
 defineOptions({ name: 'Login' })
 
@@ -130,19 +132,40 @@ const onOauth = async (source: string) => {
   window.location.href = data.authorizeUrl
 }
 
-// 查询租户状态和租户编码
+// 查询租户信息：优先按域名识别租户，识别不到时用可用租户列表供用户下拉选择
 const onGetTenant = async () => {
-  const { data } = await getTenantStatus()
-  tenantStore.setTenantEnable(data)
-  // 开启租户 根据地址(域名)查询租户code
-  if (data) {
-    const domain = window.location.hostname
-    const { data: tenantId } = await getTenantIdByDomain(domain)
-    tenantStore.setTenantId(tenantId)
+  const { data } = await getTenantInfo()
+  tenantStore.setTenantEnable(data.isEnabled)
+  if (!data.isEnabled) {
+    tenantStore.resetTenantId()
+    tenantStore.setAvailableTenants([])
+    return
   }
+  const domain = window.location.hostname
+  const { data: tenantId } = await getTenantIdByDomain(domain)
+  if (tenantId) {
+    tenantStore.setTenantId(tenantId)
+    tenantStore.setAvailableTenants([])
+    return
+  }
+  // 域名无法识别租户，用可用租户列表让用户选择
+  tenantStore.resetTenantId()
+  const tenantList = data.availableList ?? []
+  tenantStore.setAvailableTenants(tenantList)
+  // 上次选择的租户已不可用时清空记忆
+  if (tenantStore.selectedTenantId && !tenantList.some((item) => item.id === tenantStore.selectedTenantId)) {
+    tenantStore.setSelectedTenantId(undefined)
+  }
+}
+// 查询当前租户已启用的第三方登录平台
+const socialPlatforms = ref<SocialPlatformResp[]>([])
+const onGetSocialPlatform = async () => {
+  const { data } = await listSocialPlatform()
+  socialPlatforms.value = data ?? []
 }
 onMounted(() => {
   onGetTenant()
+  onGetSocialPlatform()
 })
 </script>
 

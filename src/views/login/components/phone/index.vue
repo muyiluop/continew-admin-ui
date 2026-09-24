@@ -8,8 +8,10 @@
     size="large"
     @submit="handleLogin"
   >
-    <a-form-item v-if="tenantStore.needInputTenantCode" field="tenantCode" hide-label>
-      <a-input v-model="tenantCode" placeholder="请输入租户编码（不输入时为默认租户）" allow-clear />
+    <a-form-item v-if="tenantStore.needSelectTenant" field="tenantId" hide-label>
+      <a-select v-model="tenantId" placeholder="请选择租户（不选择时为默认租户）" allow-search allow-clear>
+        <a-option v-for="item in tenantStore.availableTenants" :key="item.id" :value="item.id">{{ item.name }}</a-option>
+      </a-select>
     </a-form-item>
     <a-form-item field="phone" hide-label>
       <a-input v-model="form.phone" placeholder="请输入手机号" :max-length="11" allow-clear />
@@ -53,7 +55,6 @@ const form = reactive({
   phone: '',
   captcha: '',
 })
-const tenantCode = ref()
 
 const rules: FormInstance['rules'] = {
   phone: [
@@ -68,13 +69,19 @@ const userStore = useUserStore()
 const tabsStore = useTabsStore()
 const router = useRouter()
 const loading = ref(false)
+
+// 记住上次选择的租户，默认选中
+const tenantId = computed({
+  get: () => tenantStore.selectedTenantId,
+  set: (val) => tenantStore.setSelectedTenantId(val),
+})
 // 登录
 const handleLogin = async () => {
   const isInvalid = await formRef.value?.validate()
   if (isInvalid) return
   try {
     loading.value = true
-    await userStore.phoneLogin(form, tenantCode.value)
+    await userStore.phoneLogin(form, tenantId.value)
     tabsStore.reset()
     const { redirect, ...othersQuery } = router.currentRoute.value.query
 

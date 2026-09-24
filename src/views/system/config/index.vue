@@ -43,6 +43,7 @@ import MailConfig from './mail/index.vue'
 import SmsConfig from './sms/index.vue'
 import StorageConfig from './storage/index.vue'
 import ClientConfig from './client/index.vue'
+import SocialConfig from './social/index.vue'
 import { useDevice } from '@/hooks'
 import has from '@/utils/has'
 
@@ -58,6 +59,7 @@ const data = [
   { name: '短信配置', key: 'sms', icon: 'message', permissions: ['system:smsConfig:list'], value: SmsConfig },
   { name: '存储配置', key: 'storage', icon: 'storage', permissions: ['system:storage:list'], value: StorageConfig },
   { name: '客户端配置', key: 'client', icon: 'mobile', permissions: ['system:client:list'], value: ClientConfig },
+  { name: '社交登录', key: 'social', icon: 'share-alt', permissions: ['social:config:list'], value: SocialConfig },
 ]
 
 const menuList = computed(() => {

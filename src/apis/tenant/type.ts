@@ -25,6 +25,18 @@ export interface TenantQuery {
 }
 export interface TenantPageQuery extends TenantQuery, PageQuery {}
 
+/** 可用租户（登录时选择租户使用） */
+export interface TenantAvailableResp {
+  id: string
+  name: string
+}
+
+/** 租户通用信息 */
+export interface TenantCommonResp {
+  isEnabled: boolean
+  availableList: TenantAvailableResp[]
+}
+
 /** 租户套餐 */
 export interface TenantPackageResp {
   id: string
