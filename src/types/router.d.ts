@@ -41,5 +41,7 @@ declare module 'vue-router' {
     roles?: string[]
     /** 排序 */
     sort?: number
+    /** 所属模块编码 */
+    moduleCode?: string
   }
 }

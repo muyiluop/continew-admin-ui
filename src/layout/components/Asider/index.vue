@@ -8,8 +8,9 @@
       :collapsed="appStore.menuCollapse" @collapse="handleCollapse"
     >
       <Logo :collapsed="appStore.menuCollapse"></Logo>
+      <ModuleSwitcher v-show="!appStore.menuCollapse" class="asider-module" />
       <a-scrollbar outer-class="menu-scroll-view" style="height: 100%; overflow: auto">
-        <Menu></Menu>
+        <Menu :menus="sidebarMenus"></Menu>
       </a-scrollbar>
       <WwAds class="ads" />
     </a-layout-sider>
@@ -17,14 +18,18 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import Menu from '../Menu/index.vue'
 import Logo from '../Logo.vue'
+import ModuleSwitcher from '../ModuleSwitcher.vue'
 import WwAds from '../WwAds.vue'
-import { useAppStore } from '@/stores'
+import { useAppStore, useRouteStore } from '@/stores'
 import { useDevice } from '@/hooks'
 
 defineOptions({ name: 'Asider' })
 const appStore = useAppStore()
+const routeStore = useRouteStore()
+const { sidebarMenus } = storeToRefs(routeStore)
 const { isDesktop } = useDevice()
 
 const handleCollapse = (isCollapsed: boolean) => {

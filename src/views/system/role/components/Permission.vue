@@ -1,57 +1,64 @@
 <template>
-  <GiTable
-    ref="tableRef"
-    row-key="id"
-    :data="tableData"
-    :columns="columns"
-    :loading="loading"
-    :scroll="{ x: '100%', y: '100%', minWidth: 1000 }"
-    :pagination="false"
-    :disabled-tools="['fullscreen', 'size', 'setting']"
-    :row-selection="disabled ? false : { type: 'checkbox', showCheckedAll: showCheckedAll && !disabled, selectRowKeys: selectedKeys }"
-    @select="select"
-    @select-all="selectAll"
-    @refresh="refresh"
-  >
-    <template #toolbar-left>
-      <a-button v-permission="['system:role:updatePermission']" type="primary" :disabled="disabled" @click="save">
-        <template #icon><icon-save /></template>保存权限
-      </a-button>
-    </template>
-    <template #toolbar-right>
-      <a-radio-group v-model="isCascade" type="button" :disabled="disabled">
-        <a-radio :value="true">节点关联</a-radio>
-        <a-radio :value="false">节点独立</a-radio>
-      </a-radio-group>
-      <a-button @click="onExpanded">
-        <template #icon>
-          <icon-list v-if="isExpanded" />
-          <icon-mind-mapping v-else />
+  <div class="permission-panel">
+    <!-- 左侧模块栏 -->
+    <ModuleTabs v-model="moduleId" :modules="tabModules" />
+
+    <div class="permission-panel__content">
+      <GiTable
+        ref="tableRef"
+        row-key="id"
+        :data="displayData"
+        :columns="columns"
+        :loading="loading"
+        :scroll="{ x: '100%', y: '100%', minWidth: 1000 }"
+        :pagination="false"
+        :disabled-tools="['fullscreen', 'size', 'setting']"
+        :row-selection="disabled ? false : { type: 'checkbox', showCheckedAll: showCheckedAll && !disabled, selectRowKeys: selectedKeys }"
+        @select="select"
+        @select-all="selectAll"
+        @refresh="refresh"
+      >
+        <template #toolbar-left>
+          <a-button v-permission="['system:role:updatePermission']" type="primary" :disabled="disabled" @click="save">
+            <template #icon><icon-save /></template>保存权限
+          </a-button>
         </template>
-        <template #default>
-          <span v-if="!isExpanded">展开</span>
-          <span v-else>折叠</span>
+        <template #toolbar-right>
+          <a-radio-group v-model="isCascade" type="button" :disabled="disabled">
+            <a-radio :value="true">节点关联</a-radio>
+            <a-radio :value="false">节点独立</a-radio>
+          </a-radio-group>
+          <a-button @click="onExpanded">
+            <template #icon>
+              <icon-list v-if="isExpanded" />
+              <icon-mind-mapping v-else />
+            </template>
+            <template #default>
+              <span v-if="!isExpanded">展开</span>
+              <span v-else>折叠</span>
+            </template>
+          </a-button>
         </template>
-      </a-button>
-    </template>
-    <template #expand-icon="{ expanded }">
-      <IconDown v-if="expanded" />
-      <IconRight v-else />
-    </template>
-    <template #title="{ record }">
-      <GiSvgIcon :name="record.icon" :size="15" />
-      <span style="margin-left: 5px; vertical-align: middle">{{ record.title }}</span>
-    </template>
-    <template #permissions="{ record }">
-      <div v-if="record.permissions && record.permissions.length > 0">
-        <a-checkbox-group v-model="record.checkedPermissions" :disabled="disabled || record.disabled" @change="selectPermission(record)">
-          <a-checkbox v-for="permission in record.permissions" :key="permission.id" :value="permission.id">
-            {{ permission.title }}
-          </a-checkbox>
-        </a-checkbox-group>
-      </div>
-    </template>
-  </GiTable>
+        <template #expand-icon="{ expanded }">
+          <IconDown v-if="expanded" />
+          <IconRight v-else />
+        </template>
+        <template #title="{ record }">
+          <GiSvgIcon :name="record.icon" :size="15" />
+          <span style="margin-left: 5px; vertical-align: middle">{{ record.title }}</span>
+        </template>
+        <template #permissions="{ record }">
+          <div v-if="record.permissions && record.permissions.length > 0">
+            <a-checkbox-group v-model="record.checkedPermissions" :disabled="disabled || record.disabled" @change="selectPermission(record)">
+              <a-checkbox v-for="permission in record.permissions" :key="permission.id" :value="permission.id">
+                {{ permission.title }}
+              </a-checkbox>
+            </a-checkbox-group>
+          </div>
+        </template>
+      </GiTable>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -59,8 +66,10 @@ import { nextTick, ref, watch } from 'vue'
 import { Message, type TableInstance, type TreeNodeData } from '@arco-design/web-vue'
 import { isMobile } from '@/utils'
 import type GiTable from '@/components/GiTable/index.vue'
+import ModuleTabs from '@/components/ModuleTabs/index.vue'
 import { useTable } from '@/hooks'
 import { type RolePermissionResp, getRole, listRolePermissionTree, updateRolePermission } from '@/apis/system/role'
+import { type ModuleResp, listModuleDict } from '@/apis/system/module'
 import has from '@/utils/has'
 
 const props = withDefaults(defineProps<Props>(), {
@@ -78,6 +87,14 @@ interface ExtendedRolePermissionResp extends RolePermissionResp {
 }
 
 const tableRef = ref<InstanceType<typeof GiTable>>()
+
+/** 未分组模块 ID */
+const UNGROUPED_MODULE = '0'
+
+// 模块筛选
+const moduleId = ref<string>('')
+const allModules = ref<ModuleResp[]>([])
+
 // 是否父子联动
 const isCascade = ref(true)
 const isExpanded = ref(true)
@@ -196,8 +213,88 @@ const {
   },
 })
 
+// 菜单 ID 与所属模块 ID 映射（含按钮权限项，按钮跟随其所属菜单）
+const idModuleMap = computed(() => {
+  const map = new Map<string, string>()
+  const walk = (items: ExtendedRolePermissionResp[]) => {
+    items.forEach((item) => {
+      const mid = String(item.moduleId ?? UNGROUPED_MODULE)
+      map.set(String(item.id), mid)
+      item.permissions?.forEach((permission) => map.set(String(permission.id), mid))
+      if (item.children?.length) {
+        walk(item.children as ExtendedRolePermissionResp[])
+      }
+    })
+  }
+  walk(tableData.value as ExtendedRolePermissionResp[])
+  return map
+})
+
+// 各模块可勾选总数
+const totalByModule = computed(() => {
+  const result = new Map<string, number>()
+  idModuleMap.value.forEach((mid) => result.set(mid, (result.get(mid) ?? 0) + 1))
+  return result
+})
+
+// 各模块已选数量
+const selectedByModule = computed(() => {
+  const result = new Map<string, number>()
+  selectedKeys.value.forEach((id) => {
+    const mid = idModuleMap.value.get(String(id))
+    if (mid) {
+      result.set(mid, (result.get(mid) ?? 0) + 1)
+    }
+  })
+  return result
+})
+
+// 模块 Tab 数据（显示全部模块，空模块置灰；未分组固定最后）
+const tabModules = computed(() => {
+  const list = allModules.value.map((mod) => ({
+    id: String(mod.id),
+    name: mod.name,
+    icon: mod.icon,
+    total: totalByModule.value.get(String(mod.id)) ?? 0,
+    selected: selectedByModule.value.get(String(mod.id)) ?? 0,
+  }))
+  list.push({
+    id: UNGROUPED_MODULE,
+    name: '未分组',
+    icon: 'common',
+    total: totalByModule.value.get(UNGROUPED_MODULE) ?? 0,
+    selected: selectedByModule.value.get(UNGROUPED_MODULE) ?? 0,
+  })
+  return list
+})
+
+// 当前模块没有可配置菜单时，自动切到第一个非空模块
+const ensureModule = () => {
+  const current = tabModules.value.find((item) => item.id === moduleId.value)
+  if (!current || current.total === 0) {
+    moduleId.value = tabModules.value.find((item) => item.total > 0)?.id ?? tabModules.value[0]?.id ?? ''
+  }
+}
+
+// 模块或菜单数据就绪后校正当前模块
+watch(
+  () => tabModules.value.map((item) => [item.id, item.total].join(':')).join(','),
+  () => ensureModule(),
+)
+
+listModuleDict().then((res) => {
+  allModules.value = res.data
+})
+
+// 按模块筛选后的展示数据
+const displayData = computed(() => {
+  if (!moduleId.value) return tableData.value
+  return (tableData.value as ExtendedRolePermissionResp[])
+    .filter((item) => String(item.moduleId ?? UNGROUPED_MODULE) === moduleId.value)
+})
+
 const columns: TableInstance['columns'] = [
-  { title: '菜单', dataIndex: 'title', slotName: 'title', width: 170, ellipsis: true, tooltip: true, fixed: !isMobile() ? 'left' : undefined },
+  { title: '菜单', dataIndex: 'title', slotName: 'title', width: 220, ellipsis: true, tooltip: true, fixed: !isMobile() ? 'left' : undefined },
   { title: '权限', dataIndex: 'permissions', slotName: 'permissions' },
 ]
 
@@ -294,14 +391,14 @@ const select: TableInstance['onSelect'] = (rowKeys, checked, record) => {
   cascadeSelectParent(extendedRecord, isCascade.value)
 }
 
-// 全选
+// 全选（仅当前模块）
 const selectAll: TableInstance['onSelectAll'] = (checked) => {
   // 如果处于禁用状态，直接返回，不执行任何逻辑
   if (disabled.value) {
     return
   }
 
-  tableData.value.forEach((item) => {
+  displayData.value.forEach((item) => {
     const extendedItem = item as ExtendedRolePermissionResp
     extendedItem.isChecked = checked
     checked
@@ -382,6 +479,7 @@ const fetchRole = async (id: string) => {
       tableRef.value?.tableRef?.selectAll(false)
       tableRef.value?.tableRef?.select(data.menuIds, true)
       showCheckedAll.value = !disabled.value
+      ensureModule()
     })
   } finally {
     loading.value = false
@@ -408,4 +506,19 @@ watch(
 )
 </script>
 
-<style scoped lang="scss"></style>
+<style scoped lang="scss">
+.permission-panel {
+  display: flex;
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+
+  &__content {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+  }
+}
+</style>

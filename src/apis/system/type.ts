@@ -67,6 +67,7 @@ export interface RolePermissionResp {
   id: string
   title: string
   parentId: string
+  moduleId?: string
   permission?: string
   children?: RolePermissionResp[]
   permissions?: RolePermissionResp[]
@@ -101,6 +102,7 @@ export interface MenuResp {
   id: string
   title: string
   parentId: string
+  moduleId: string
   type: 1 | 2 | 3
   path: string
   name: string
@@ -122,7 +124,32 @@ export interface MenuResp {
 export interface MenuQuery {
   title?: string
   status?: number
+  moduleId?: string
 }
+
+/** 业务模块类型 */
+export interface ModuleResp {
+  id: string
+  name: string
+  code: string
+  icon: string
+  platforms: string[]
+  homePath: string
+  sort: number
+  status: 1 | 2
+  description: string
+  createUserString: string
+  createTime: string
+  updateUserString: string
+  updateTime: string
+}
+export interface ModuleQuery {
+  name?: string
+  code?: string
+  status?: number
+  sort?: Array<string>
+}
+export interface ModulePageQuery extends ModuleQuery, PageQuery {}
 
 /** 部门类型 */
 export interface DeptResp {

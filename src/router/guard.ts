@@ -138,7 +138,9 @@ export const setupRouterGuard = (router: Router) => {
     NProgress.done()
   })
 
-  router.afterEach(() => {
+  router.afterEach((to) => {
     NProgress.done()
+    // 路由变化时同步当前模块（深链、页签切换均适用）
+    useRouteStore().syncModuleByPath(to.path)
   })
 }

@@ -21,6 +21,8 @@ export interface RouteItem {
   id: string
   title: string
   parentId: string
+  moduleId: string
+  moduleCode: string
   type: 1 | 2 | 3
   path: string
   name: string
@@ -40,6 +42,25 @@ export interface RouteItem {
   breadcrumb: boolean
   showInTabs: boolean
   affix: boolean
+}
+
+/** 模块类型 */
+export interface RouteModuleItem {
+  id: string
+  name: string
+  code: string
+  icon: string
+  platforms: string[]
+  homePath: string
+  sort: number
+  status: 1 | 2
+  description: string
+}
+
+/** 路由与模块响应类型 */
+export interface RouteResult {
+  modules: RouteModuleItem[]
+  routes: RouteItem[]
 }
 
 /** 认证类型 */

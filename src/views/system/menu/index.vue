@@ -16,6 +16,11 @@
         <IconRight v-else />
       </template>
       <template #toolbar-left>
+        <a-select
+          v-model="moduleId" :options="moduleOptions" placeholder="按模块筛选" allow-clear
+          style="width: 180px"
+          @change="search"
+        />
         <a-input v-model="title" placeholder="搜索菜单标题" allow-clear>
           <template #prefix><icon-search /></template>
         </a-input>
@@ -53,6 +58,10 @@
       <template #title="{ record }">
         <GiSvgIcon :name="record.icon" :size="15" />
         <span style="margin-left: 5px; vertical-align: middle">{{ record.title }}</span>
+      </template>
+      <template #module="{ record }">
+        <a-tag v-if="record.moduleId" size="small">{{ moduleNameMap.get(String(record.moduleId)) || record.moduleId }}</a-tag>
+        <span v-else>未分组</span>
       </template>
       <template #type="{ record }">
         <a-tag v-if="record.type === 1" color="arcoblue">目录</a-tag>
@@ -99,6 +108,7 @@ import type { TableInstance } from '@arco-design/web-vue'
 import { Message, Modal } from '@arco-design/web-vue'
 import AddModal from './AddModal.vue'
 import { type MenuResp, clearMenuCache, deleteMenu, listMenu } from '@/apis/system/menu'
+import { type ModuleResp, listModule } from '@/apis/system/module'
 import type GiTable from '@/components/GiTable/index.vue'
 import { useTable } from '@/hooks'
 import { isMobile } from '@/utils'
@@ -106,12 +116,21 @@ import has from '@/utils/has'
 
 defineOptions({ name: 'SystemMenu' })
 
+// 模块筛选与展示
+const moduleId = ref<string | undefined>()
+const modules = ref<ModuleResp[]>([])
+const moduleOptions = computed(() => modules.value.map((item) => ({ label: item.name, value: item.id })))
+const moduleNameMap = computed(() => new Map(modules.value.map((item) => [String(item.id), item.name])))
+listModule().then((res) => {
+  modules.value = res.data
+})
+
 const {
   tableData,
   loading,
   search,
   handleDelete,
-} = useTable(() => listMenu(), { immediate: true })
+} = useTable(() => listMenu({ moduleId: moduleId.value }), { immediate: true })
 
 // 过滤树
 const searchData = (title: string, path: string, permission: string) => {
@@ -149,6 +168,7 @@ const dataList = computed(() => {
 
 const columns: TableInstance['columns'] = [
   { title: '菜单标题', dataIndex: 'title', slotName: 'title', width: 170, fixed: !isMobile() ? 'left' : undefined },
+  { title: '所属模块', dataIndex: 'moduleId', slotName: 'module', width: 120, align: 'center' },
   { title: '类型', dataIndex: 'type', slotName: 'type', align: 'center' },
   { title: '状态', dataIndex: 'status', slotName: 'status', align: 'center' },
   { title: '排序', dataIndex: 'sort', align: 'center', show: false },
@@ -176,7 +196,11 @@ const columns: TableInstance['columns'] = [
 
 // 重置
 const reset = () => {
+  moduleId.value = undefined
   title.value = ''
+  path.value = ''
+  permission.value = ''
+  search()
 }
 
 // 删除
@@ -212,7 +236,7 @@ const onExpanded = () => {
 const AddModalRef = ref<InstanceType<typeof AddModal>>()
 // 新增
 const onAdd = (parentId?: string) => {
-  AddModalRef.value?.onAdd(parentId)
+  AddModalRef.value?.onAdd(parentId, moduleId.value)
 }
 
 // 修改

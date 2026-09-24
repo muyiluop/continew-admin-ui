@@ -29,6 +29,12 @@
           :filter-tree-node="filterOptions"
         />
       </a-form-item>
+      <a-form-item v-if="form.type !== 3" label="所属模块" field="moduleId">
+        <a-select
+          v-model="form.moduleId" :options="moduleOptions" :disabled="!!form.parentId"
+          placeholder="请选择所属模块（子菜单跟随父菜单）" allow-clear
+        />
+      </a-form-item>
       <a-row>
         <a-col v-bind="colProps">
           <a-form-item label="菜单标题" field="title">
@@ -144,12 +150,14 @@ import { type ColProps, type FormInstance, Message, type TreeNodeData } from '@a
 import { useWindowSize } from '@vueuse/core'
 import { mapTree } from 'xe-utils'
 import { type MenuResp, addMenu, getMenu, updateMenu } from '@/apis/system/menu'
+import { listModule } from '@/apis/system/module'
 import { useResetReactive } from '@/hooks'
 import { filterTree, transformPathToName } from '@/utils'
 import { useComponentPaths } from '@/hooks/modules/useComponentPaths'
 
 interface Props {
   menus: MenuResp[]
+  defaultModuleId?: string
 }
 const props = withDefaults(defineProps<Props>(), {
   menus: () => [],
@@ -184,6 +192,7 @@ const { componentOptions } = useComponentPaths()
 
 const rules: FormInstance['rules'] = {
   parentId: [{ required: true, message: '请选择上级菜单' }],
+  moduleId: [{ required: true, message: '请选择所属模块' }],
   title: [{ required: true, message: '请输入菜单标题' }],
   path: [{ required: true, message: '请输入路由地址' }],
   name: [{ required: true, message: '请输入组件名称' }],
@@ -192,13 +201,15 @@ const rules: FormInstance['rules'] = {
 }
 // eslint-disable-next-line vue/return-in-computed-property
 const formRules = computed(() => {
+  // 根菜单必须选择所属模块，子菜单继承父菜单模块
+  const moduleRule = form.parentId ? {} : { moduleId: rules.moduleId }
   if ([1, 2].includes(form.type)) {
     const { title, name, path } = rules
-    return { title, name, path } as FormInstance['rules']
+    return { title, name, path, ...moduleRule } as FormInstance['rules']
   }
   if (form.type === 3) {
     const { parentId, title, permission } = rules
-    return { parentId, title, permission } as FormInstance['rules']
+    return { parentId, title, permission, ...moduleRule } as FormInstance['rules']
   }
 })
 
@@ -221,7 +232,7 @@ const onChangeType = () => {
 // 转换为菜单树
 const menuSelectTree = computed(() => {
   const menus = JSON.parse(JSON.stringify(props.menus)) as MenuResp[]
-  const data = filterTree(menus, (i) => [1, 2].includes(i.type))
+  const data = filterTree(menus, (i) => [1, 2].includes(i.type) && (!form.moduleId || i.moduleId === form.moduleId))
   return mapTree(data, (i) => ({
     key: i.id,
     title: i.title,
@@ -256,10 +267,36 @@ const save = async () => {
   }
 }
 
+// 模块下拉选项
+const moduleOptions = ref<{ label: string, value: string }[]>([])
+const ensureModules = async () => {
+  if (moduleOptions.value.length) return
+  const { data } = await listModule()
+  moduleOptions.value = data.map((item) => ({ label: item.name, value: item.id }))
+}
+
+// 在菜单树中查找指定菜单
+const findMenu = (menus: MenuResp[], id: string): MenuResp | undefined => {
+  for (const menu of menus) {
+    if (menu.id === id) return menu
+    if (menu.children?.length) {
+      const found = findMenu(menu.children, id)
+      if (found) return found
+    }
+  }
+  return undefined
+}
+
 // 新增
-const onAdd = (id?: string) => {
+const onAdd = async (id?: string, moduleId?: string) => {
   reset()
+  await ensureModules()
   form.parentId = id
+  form.moduleId = moduleId
+  if (id) {
+    const parent = findMenu(props.menus, id)
+    if (parent?.moduleId) form.moduleId = parent.moduleId
+  }
   dataId.value = ''
   visible.value = true
 }
@@ -267,6 +304,7 @@ const onAdd = (id?: string) => {
 // 修改
 const onUpdate = async (id: string) => {
   reset()
+  await ensureModules()
   dataId.value = id
   const { data } = await getMenu(id)
   Object.assign(form, data)

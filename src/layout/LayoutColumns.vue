@@ -1,19 +1,18 @@
 <template>
   <div class="layout-columns">
     <div v-show="isDesktop" class="layout-columns__left">
-      <!-- 左侧一级菜单区域 -->
-      <OneLevelMenu :menus="oneLevelMenus" @menu-click="handleMenuItemClickByItem"></OneLevelMenu>
+      <!-- 左侧模块切换栏 -->
+      <ModuleSwitcher mode="rail" />
 
-      <!-- 左侧二级菜单区域 -->
-      <div v-if="twoLevelMenus.length > 0" class="layout-columns__right-menu" :class="{ collapse: appStore.menuCollapse }">
-        <!-- 系统标题 -->
+      <!-- 当前模块菜单区域 -->
+      <div v-if="sidebarMenus.length > 0" class="layout-columns__right-menu" :class="{ collapse: appStore.menuCollapse }">
+        <!-- 当前模块名称 -->
         <div class="layout-columns__title">
-          <span v-show="!appStore.menuCollapse" class="system-name gi_line_1">{{ appStore.getTitle() }}</span>
+          <span v-show="!appStore.menuCollapse" class="system-name gi_line_1">
+            {{ routeStore.currentModule?.name || appStore.getTitle() }}
+          </span>
         </div>
-        <Menu
-          v-if="twoLevelMenus.length >= 1 || oneLevelMenuActiveRoute?.meta?.alwaysShow === true"
-          class="layout-columns__menu" :menus="twoLevelMenus" :menu-style="menuStyle"
-        />
+        <Menu class="layout-columns__menu" :menus="sidebarMenus" :menu-style="menuStyle" />
       </div>
     </div>
 
@@ -30,13 +29,13 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import Header from './components/Header/index.vue'
 import Main from './components/Main.vue'
 import Menu from './components/Menu/index.vue'
-import OneLevelMenu from './components/OneLevelMenu/index.vue'
+import ModuleSwitcher from './components/ModuleSwitcher.vue'
 import Tabs from './components/Tabs/index.vue'
-import { useAppStore } from '@/stores'
-import { useLevelMenu } from '@/layout/hooks/useLevelMenu'
+import { useAppStore, useRouteStore } from '@/stores'
 import { useDevice } from '@/hooks'
 import NoticePopup from '@/views/user/message/components/NoticePopup.vue'
 import { getToken } from '@/utils/auth'
@@ -44,10 +43,10 @@ import { getToken } from '@/utils/auth'
 defineOptions({ name: 'LayoutColumns' })
 
 const appStore = useAppStore()
+const routeStore = useRouteStore()
+const { sidebarMenus } = storeToRefs(routeStore)
 const { isDesktop } = useDevice()
 
-const { oneLevelMenus, twoLevelMenus, oneLevelMenuActiveRoute, getOneLevelMenus, handleMenuItemClickByItem } = useLevelMenu()
-getOneLevelMenus()
 // 菜单样式 - 根据折叠状态动态调整宽度
 const menuStyle = computed(() => {
   return {
