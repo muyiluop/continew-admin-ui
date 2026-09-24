@@ -7,9 +7,6 @@
       <div style="margin-top: 14px">
         <a-grid :cols="24" :col-gap="14" :row-gap="14">
           <a-grid-item :span="24">
-            <Project />
-          </a-grid-item>
-          <a-grid-item :span="24">
             <LatestActivity />
           </a-grid-item>
         </a-grid>
@@ -23,13 +20,7 @@
           </div>
         </a-grid-item>
         <a-grid-item class="panel" :span="24">
-          <Carousel />
-        </a-grid-item>
-        <a-grid-item class="panel" :span="24">
           <Notice />
-        </a-grid-item>
-        <a-grid-item class="panel" :span="24">
-          <Docs />
         </a-grid-item>
       </a-grid>
     </div>
